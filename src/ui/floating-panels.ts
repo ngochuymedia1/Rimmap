@@ -139,21 +139,17 @@ function initializeKnownPanels() {
     }
 }
 
-function captureDraggedPanels() {
-    const viewport = getViewportSize();
-    for (const panel of getFloatingPanels()) {
-        if (!panel.dataset.userPositioned)
-            continue;
-        capturePanelAnchor(panel, viewport);
-        positionFloatingPanel(panel, viewport);
-    }
-}
-
-// The existing drag helper owns the pointer gesture. Capture its final geometry
-// after pointerup, then convert raw left/top pixels into edge-relative metadata.
+// The existing drag helper owns the pointer gesture. Its active handle identifies
+// exactly which panel finished moving, so a temporary viewport clamp on another
+// panel never overwrites that panel's saved edge offset.
 window.addEventListener('pointerup', () => {
+    const handle = document.querySelector<HTMLElement>('.panel-drag-handle.dragging');
+    const panel = handle?.closest<HTMLElement>('#all-layers-panel, #inspector-panel') ?? null;
+    if (!panel)
+        return;
     queueMicrotask(() => {
-        captureDraggedPanels();
+        capturePanelAnchor(panel);
+        positionFloatingPanel(panel);
     });
 });
 
@@ -173,7 +169,7 @@ const panelObserver = new MutationObserver(records => {
         }
         if (record.type === 'attributes') {
             const target = record.target instanceof Element ? record.target : null;
-            const panel = target?.closest?.('#all-layers-panel, #inspector-panel');
+            const panel = target?.closest('#all-layers-panel, #inspector-panel') ?? null;
             if (isFloatingPanel(panel) && !document.body.classList.contains('panel-dragging'))
                 needsReflow = true;
         }
