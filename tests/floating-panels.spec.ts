@@ -15,12 +15,17 @@ async function setDraggedPosition(
 ) {
   await page.locator(selector).evaluate((panel, position) => {
     const element = panel as HTMLElement;
+    const handle = element.querySelector<HTMLElement>('.panel-drag-handle');
     element.dataset.userPositioned = '1';
     element.style.setProperty('left', `${position.left}px`, 'important');
     element.style.setProperty('top', `${position.top}px`, 'important');
     element.style.setProperty('right', 'auto', 'important');
     element.style.setProperty('bottom', 'auto', 'important');
+    handle?.classList.add('dragging');
+    document.body.classList.add('panel-dragging');
     window.dispatchEvent(new PointerEvent('pointerup'));
+    handle?.classList.remove('dragging');
+    document.body.classList.remove('panel-dragging');
   }, { left, top });
   await page.waitForTimeout(30);
 }
@@ -68,25 +73,58 @@ test('dragged panels preserve their nearest edge offset through resize', async (
   expect(layers!.y).toBeCloseTo(96, 0);
 });
 
-test('collapsed and expanded Properties keep the same anchor', async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 700 });
+test('temporary viewport clamping does not overwrite a dragged edge offset', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 800 });
   await openBoard(page);
   await showProperties(page);
 
   const width = (await page.locator('#inspector-panel').boundingBox())!.width;
-  await setDraggedPosition(page, '#inspector-panel', 1100 - width - 64, 88);
+  await setDraggedPosition(page, '#inspector-panel', 1200 - width - 260, 90);
+
+  await page.setViewportSize({ width: 520, height: 420 });
+  await page.waitForTimeout(30);
+  const clamped = await page.locator('#inspector-panel').boundingBox();
+  expect(clamped!.x).toBeGreaterThanOrEqual(8);
+  expect(clamped!.x + clamped!.width).toBeLessThanOrEqual(512);
+
+  // An unrelated click while the panel is clamped must not redefine its saved
+  // right-edge offset. Restoring the large viewport should restore 260px.
+  await page.mouse.click(20, 300);
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.waitForTimeout(30);
+  const restored = await page.locator('#inspector-panel').boundingBox();
+  expect(1200 - (restored!.x + restored!.width)).toBeCloseTo(260, 0);
+  expect(restored!.y).toBeCloseTo(90, 0);
+});
+
+test('collapsed and expanded floating panels keep the same anchors', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 700 });
+  await openBoard(page);
+  await showProperties(page);
+
+  const propertiesWidth = (await page.locator('#inspector-panel').boundingBox())!.width;
+  await setDraggedPosition(page, '#inspector-panel', 1100 - propertiesWidth - 64, 88);
+  await setDraggedPosition(page, '#all-layers-panel', 72, 66);
 
   await page.locator('#btn-inspector-collapse').click();
+  await page.locator('#btn-all-layers-toggle').click();
   await page.waitForTimeout(30);
-  let rect = await page.locator('#inspector-panel').boundingBox();
-  expect(1100 - (rect!.x + rect!.width)).toBeCloseTo(64, 0);
-  expect(rect!.y).toBeCloseTo(88, 0);
+  let properties = await page.locator('#inspector-panel').boundingBox();
+  let layers = await page.locator('#all-layers-panel').boundingBox();
+  expect(1100 - (properties!.x + properties!.width)).toBeCloseTo(64, 0);
+  expect(properties!.y).toBeCloseTo(88, 0);
+  expect(layers!.x).toBeCloseTo(72, 0);
+  expect(layers!.y).toBeCloseTo(66, 0);
 
   await page.locator('#btn-inspector-collapse').click();
+  await page.locator('#btn-all-layers-toggle').click();
   await page.waitForTimeout(30);
-  rect = await page.locator('#inspector-panel').boundingBox();
-  expect(1100 - (rect!.x + rect!.width)).toBeCloseTo(64, 0);
-  expect(rect!.y).toBeCloseTo(88, 0);
+  properties = await page.locator('#inspector-panel').boundingBox();
+  layers = await page.locator('#all-layers-panel').boundingBox();
+  expect(1100 - (properties!.x + properties!.width)).toBeCloseTo(64, 0);
+  expect(properties!.y).toBeCloseTo(88, 0);
+  expect(layers!.x).toBeCloseTo(72, 0);
+  expect(layers!.y).toBeCloseTo(66, 0);
 });
 
 test('short viewports constrain panel height and scroll content instead of scaling controls', async ({ page }) => {
