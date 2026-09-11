@@ -174,30 +174,43 @@ document.addEventListener('click', event => {
         queueMicrotask(scheduleFloatingPanelReflow);
 });
 
-// Properties is created lazily. Observe only child insertion so the module cannot
-// create an attribute/style observer loop during layout updates.
+// Properties is created lazily and its visible sections change with selection.
+// Observe only child insertion plus class/hidden changes; layout writes below do
+// not touch those attributes, so this cannot recurse on its own positioning work.
 const appRoot = document.getElementById('app');
 if (appRoot) {
     const panelObserver = new MutationObserver(records => {
-        let foundPanel = false;
+        let needsReflow = false;
         for (const record of records) {
-            for (const node of record.addedNodes) {
-                if (!(node instanceof Element))
-                    continue;
-                if (isFloatingPanel(node)) {
-                    initializePanelAnchor(node);
-                    foundPanel = true;
+            if (record.type === 'childList') {
+                for (const node of record.addedNodes) {
+                    if (!(node instanceof Element))
+                        continue;
+                    if (isFloatingPanel(node)) {
+                        initializePanelAnchor(node);
+                        needsReflow = true;
+                    }
+                    node.querySelectorAll<HTMLElement>(PANEL_SELECTOR).forEach(panel => {
+                        initializePanelAnchor(panel);
+                        needsReflow = true;
+                    });
                 }
-                node.querySelectorAll<HTMLElement>(PANEL_SELECTOR).forEach(panel => {
-                    initializePanelAnchor(panel);
-                    foundPanel = true;
-                });
+                continue;
             }
+            const target = record.target instanceof Element ? record.target : null;
+            const panel = target?.closest(PANEL_SELECTOR) ?? null;
+            if (isFloatingPanel(panel) && !document.body.classList.contains('panel-dragging'))
+                needsReflow = true;
         }
-        if (foundPanel)
+        if (needsReflow)
             scheduleFloatingPanelReflow();
     });
-    panelObserver.observe(appRoot, { childList: true, subtree: true });
+    panelObserver.observe(appRoot, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'hidden'],
+    });
 }
 
 // Keep Rimmap's original inspector resize/startup path intact. This listener only
