@@ -21,6 +21,7 @@ node scripts/check-paste-exit.mjs
 node scripts/check-note-rectangle-performance.mjs
 node scripts/check-performance-system.mjs
 node scripts/check-dense-board-stability.mjs
+node scripts/check-floating-panels.mjs
 node scripts/check-canvas-features.mjs
 node scripts/check-arrow-connectors.mjs
 

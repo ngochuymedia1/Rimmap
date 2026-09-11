@@ -6,6 +6,7 @@ import './style.css';
 // They must be imported by the entry point or the extracted handlers never run.
 import './interactions/pointer';
 import './ui/wiring';
+import './ui/floating-panels';
 import { loadFromLocal, saveProject } from './persistence/index';
 import { loadShortcutPreferences } from './shortcuts/index';
 import { appState, dispatch } from './state/store';
