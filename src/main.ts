@@ -9,7 +9,7 @@ import './ui/wiring';
 import { loadFromLocal, saveProject } from './persistence/index';
 import { loadShortcutPreferences } from './shortcuts/index';
 import { appState, dispatch } from './state/store';
-import { resize } from './ui/inspector';
+import { resize } from './ui/floating-panels';
 import { installDesktopCloseGuard } from './desktop/index';
 import { unsavedExitDialog } from './ui/dialogs';
 
