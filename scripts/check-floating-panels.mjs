@@ -8,8 +8,10 @@ const main = read('src/main.ts');
 const style = read('src/style.css');
 const tests = read('tests/floating-panels.spec.ts');
 
-if (!main.includes("import { resize } from './ui/floating-panels';"))
-  fail('application bootstrap does not use the responsive floating-panel coordinator');
+if (!main.includes("import './ui/floating-panels';") || !main.includes("import { resize } from './ui/inspector';"))
+  fail('responsive panels must remain a DOM-only side effect while bootstrap keeps inspector.resize()');
+if (/from ['"]\.\.\/(renderer|state)\//.test(panels) || /from ['"]\.\/inspector['"]/.test(panels))
+  fail('floating panel layout reintroduced a renderer/state/inspector startup dependency');
 if (!panels.includes("type HorizontalAnchor = 'left' | 'right'"))
   fail('floating panels do not store a horizontal edge anchor');
 if (!panels.includes('panel.dataset.panelHorizontalOffset') || !panels.includes('panel.dataset.panelVerticalOffset'))
@@ -22,10 +24,10 @@ if (!panels.includes('PANEL_SAFE_MARGIN = 8') || !panels.includes('maxLeft') || 
   fail('floating panels are not clamped to a safe viewport margin');
 if (!panels.includes("content.style.overflowY = 'auto'") || !panels.includes("list.style.overflowY = 'auto'"))
   fail('short viewports do not scroll panel content internally');
-if (!panels.includes('requestVisualFrame(applyResponsiveResize)'))
-  fail('window resize is not coalesced through the shared visual-frame scheduler');
-if (!panels.includes("window.removeEventListener('resize', legacyResize)"))
-  fail('legacy independent resize listener is still active alongside responsive resize');
+if (!panels.includes("window.addEventListener('resize', scheduleFloatingPanelReflow)"))
+  fail('floating-panel resize reflow is not frame-coalesced');
+if (!panels.includes('new MutationObserver') || !panels.includes("attributeFilter: ['class', 'hidden']"))
+  fail('lazy Properties creation/content-size changes are not covered by responsive reflow');
 if (!style.includes('left: 50%;') || !style.includes('bottom: 22px;') || !style.includes('transform: translateX(-50%);'))
   fail('bottom toolbar no longer uses its bottom-center relationship');
 if (!tests.includes('dragged panels preserve their nearest edge offset through resize') ||
@@ -34,4 +36,4 @@ if (!tests.includes('dragged panels preserve their nearest edge offset through r
     !tests.includes('short viewports constrain panel height and scroll content instead of scaling controls'))
   fail('responsive floating-panel browser regressions are incomplete');
 
-console.log('OK: floating panels use responsive edge anchors, safe clamping, scrolling, and shared-frame resize work.');
+console.log('OK: floating panels use DOM-only edge anchors, safe clamping, scrolling, and frame-coalesced reflow without changing bootstrap resize ownership.');
