@@ -1,0 +1,20 @@
+import fs from 'node:fs';
+const read = p => fs.readFileSync(p, 'utf8');
+const fail = m => { console.error(`FAIL: ${m}`); process.exit(1); };
+const inspector = read('src/ui/inspector.ts');
+const context = read('src/ui/context-menu.ts');
+const geometry = read('src/model/geometry.ts');
+const dom = read('src/ui/dom.ts');
+const layers = read('src/layers/index.ts');
+const tests = read('tests/canvas-features.spec.ts');
+const sceneIndex = read('src/performance/scene-index.ts');
+
+if (!dom.includes('title="Import image"') || !dom.includes('aria-label="Import image"')) fail('image import control is not image-specific');
+if (!layers.includes("return 'Image';")) fail('image layers are still labeled as Media');
+if (!inspector.includes('clampFloatingPanelToViewport') || !inspector.includes('rect.right > window.innerWidth - margin')) fail('floating Properties panel is not clamped after viewport shrink');
+if (!context.includes('const elementIdMap = new Map') || !context.includes('element.startBinding = startBinding') || !context.includes('element.endBinding = endBinding')) fail('duplicate/paste does not remap internal connector bindings');
+if (!geometry.includes('getAutoRouteObstaclesInBounds') || !geometry.includes('AUTO_ROUTE_SEARCH_MIN_MARGIN') || !geometry.includes('validationSignature')) fail('Auto routing does not use localized obstacle candidates with deterministic cache validation');
+if (!sceneIndex.includes('includeVolatileAutoArrows') || !geometry.includes('includeVolatileAutoArrows: false')) fail('shape-only dense-board queries still include every volatile Auto arrow');
+if (!geometry.includes('cached?.sourcePoints === pts')) fail('Auto render sampling is not reused when local route geometry is unchanged');
+if (!tests.includes('dense-board connector binding survives duplication') || !tests.includes('Properties panel returns on-screen after viewport shrink')) fail('dense-board/resize browser regressions are missing');
+console.log('OK: image-specific import UI, resize-safe Properties positioning, duplicated connector bindings, and localized Auto routing are guarded.');
