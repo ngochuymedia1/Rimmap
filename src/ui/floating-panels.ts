@@ -75,11 +75,18 @@ function initializePanelAnchor(panel: HTMLElement) {
     if (panel.dataset.panelHorizontalAnchor)
         return;
 
-    if (!panel.dataset.userPositioned) {
-        if (panel.id === 'inspector-panel')
+    const wasDragged = panel.dataset.userPositioned === '1';
+    if (!wasDragged) {
+        if (panel.id === 'inspector-panel') {
             setPanelAnchor(panel, 'right', DEFAULT_EDGE_OFFSET, DEFAULT_TOP_OFFSET);
-        else
+            // inspector.ts still calls its legacy position helper when content
+            // changes. A truthy compatibility marker prevents that helper from
+            // restoring the obsolete 228px default while real drags still write 1.
+            panel.dataset.userPositioned = 'responsive';
+        }
+        else {
             setPanelAnchor(panel, 'left', DEFAULT_EDGE_OFFSET, DEFAULT_TOP_OFFSET);
+        }
         return;
     }
 
