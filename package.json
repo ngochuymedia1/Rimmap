@@ -1,0 +1,31 @@
+{
+  "name": "rimmap",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:static": "bash scripts/check-all.sh",
+    "test:text": "playwright test tests/text-editor.regression.spec.ts",
+    "test:e2e": "playwright test tests/workflows.spec.ts",
+    "test:browser": "playwright test",
+    "test": "npm run test:static && npm run test:browser",
+    "tauri": "tauri",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build"
+  },
+  "dependencies": {
+    "idb-keyval": "^6.2.1",
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-dialog": "^2.7.3",
+    "@tauri-apps/plugin-fs": "^2.5.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5",
+    "@tauri-apps/cli": "^2.11.4"
+  }
+}
