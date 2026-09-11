@@ -1,4 +1,4 @@
-import { requestVisualFrame } from '../renderer/index';
+import { redraw, requestVisualFrame } from '../renderer/index';
 import { resizeCanvasForHighDpi } from '../renderer/dpi';
 import { dispatch } from '../state/store';
 import { appDiv, canvas } from './dom';
@@ -166,7 +166,7 @@ const panelObserver = new MutationObserver(records => {
                     continue;
                 if (isFloatingPanel(node))
                     initializePanelAnchor(node);
-                node.querySelectorAll?.<HTMLElement>('#all-layers-panel, #inspector-panel').forEach(initializePanelAnchor);
+                node.querySelectorAll<HTMLElement>('#all-layers-panel, #inspector-panel').forEach(initializePanelAnchor);
             }
             needsReflow = true;
             continue;
@@ -195,17 +195,23 @@ function applyResponsiveResize() {
     resizeCanvasForHighDpi(canvas);
     syncHistoryBarPosition();
     reflowFloatingPanels(viewport);
-    // requestVisualFrame() paints once after this task, so no second redraw loop
-    // is needed here even if Windows emits several resize events in one frame.
+}
+
+function requestResponsiveResize() {
+    // Windows/Tauri can emit several resize events during maximize/restore.
+    // The renderer Set deduplicates this task and paints once after it runs.
+    requestVisualFrame(applyResponsiveResize);
 }
 
 export function resize() {
-    requestVisualFrame(applyResponsiveResize);
+    // Preserve Rimmap's synchronous startup resize before recovery loading.
+    applyResponsiveResize();
+    redraw();
 }
 
 // inspector.ts historically installed the resize listener itself. Replace that
 // listener with the shared-frame responsive resize path while keeping the rest
 // of the inspector module and its public API unchanged.
 window.removeEventListener('resize', legacyResize);
-window.addEventListener('resize', resize);
+window.addEventListener('resize', requestResponsiveResize);
 initializeKnownPanels();
